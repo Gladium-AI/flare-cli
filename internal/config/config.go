@@ -113,18 +113,69 @@ func SaveConfig() error {
 	return nil
 }
 
-// APIToken retrieves the Cloudflare API token from the configured env var.
+// APIToken retrieves the Cloudflare API token.
+// Priority: CLOUDFLARE_API_TOKEN env > config api_token > stored credentials file.
 func APIToken() string {
-	// Direct config value takes precedence.
-	if token := viper.GetString("cloudflare.api_token"); token != "" {
-		return token
-	}
-	// Fall back to the env var name specified in config.
+	// Env var takes highest precedence.
 	envName := viper.GetString(KeyAPITokenEnv)
 	if envName == "" {
 		envName = "CLOUDFLARE_API_TOKEN"
 	}
-	return os.Getenv(envName)
+	if token := os.Getenv(envName); token != "" {
+		return token
+	}
+	// Inline config value.
+	if token := viper.GetString("cloudflare.api_token"); token != "" {
+		return token
+	}
+	// Stored credentials file (written by `flare auth login`).
+	if token, err := LoadCredential(); err == nil && token != "" {
+		return token
+	}
+	return ""
+}
+
+// CredentialPath returns the path to the credentials file.
+func CredentialPath() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "credentials"), nil
+}
+
+// SaveCredential writes an API token to the credentials file (mode 0600).
+func SaveCredential(token string) error {
+	path, err := CredentialPath()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(token), 0600)
+}
+
+// LoadCredential reads the API token from the credentials file.
+func LoadCredential() (string, error) {
+	path, err := CredentialPath()
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// DeleteCredential removes the credentials file.
+func DeleteCredential() error {
+	path, err := CredentialPath()
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 // Validate checks that required config values are present.
@@ -139,7 +190,7 @@ func Validate() error {
 		return fmt.Errorf("cloudflare.domain is not set (run 'flare init')")
 	}
 	if APIToken() == "" {
-		return fmt.Errorf("CLOUDFLARE_API_TOKEN environment variable is not set")
+		return fmt.Errorf("no API token found (run 'flare auth login' or set CLOUDFLARE_API_TOKEN)")
 	}
 	return nil
 }

@@ -17,7 +17,10 @@ var initCmd = &cobra.Command{
 	Short: "Bootstrap flare-cli for a Cloudflare account and zone",
 	Long: `Initialize flare-cli by providing your Cloudflare account ID, zone ID,
 and domain. This stores the configuration so subsequent commands can
-create tunnels, DNS records, and Access applications.`,
+create tunnels, DNS records, and Access applications.
+
+Tip: Use 'flare auth login' to authenticate via browser and auto-discover
+your account ID and zone ID instead of providing them manually.`,
 	RunE: runInit,
 }
 
@@ -100,9 +103,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Check API token is available.
 	token := config.APIToken()
 	if token == "" {
-		ui.PrintWarning("No API token found in $%s. Set it before using 'flare serve'.", apiTokenEnv)
+		ui.PrintWarning("No API token found.")
+		ui.PrintInfo("Run 'flare auth login' to authenticate via browser, or set $%s.", apiTokenEnv)
 	} else {
-		ui.PrintSuccess("API token detected from $%s", apiTokenEnv)
+		ui.PrintSuccess("API token detected")
 	}
 
 	if verify {

@@ -8,15 +8,15 @@ func New(cfg Config) (Origin, error) {
 	case TypeLocalHTTP:
 		return NewLocalHTTP(cfg)
 	case TypeLocalCommand:
-		return nil, fmt.Errorf("origin type %q not yet implemented", cfg.Type)
+		return NewLocalCommand(cfg)
 	case TypeDockerContainer:
-		return nil, fmt.Errorf("origin type %q not yet implemented", cfg.Type)
+		return NewDockerContainer(cfg)
 	case TypeDockerCompose:
-		return nil, fmt.Errorf("origin type %q not yet implemented", cfg.Type)
+		return NewDockerCompose(cfg)
 	case TypeBuiltinStatic:
-		return nil, fmt.Errorf("origin type %q not yet implemented", cfg.Type)
+		return NewBuiltinStatic(cfg)
 	case TypeBuiltinFileBrowser:
-		return nil, fmt.Errorf("origin type %q not yet implemented", cfg.Type)
+		return NewBuiltinFileBrowser(cfg)
 	default:
 		return nil, fmt.Errorf("unknown origin type: %q", cfg.Type)
 	}

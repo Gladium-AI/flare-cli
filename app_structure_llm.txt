@@ -1,0 +1,65 @@
+# App Structure - flare-cli
+# Last updated: 2026-03-17
+
+## Repository
+- Local: /Users/paolo/Repos/flare-cli
+- Module: github.com/paoloanzn/flare-cli
+
+## Architecture
+Go CLI (binary: `flare`) that serves local/containerized apps through
+Cloudflare Tunnel with Cloudflare Access authentication.
+
+### Directory Layout
+- main.go              → Entrypoint, calls cmd.Execute()
+- cmd/                 → Cobra command tree (one file per command)
+- internal/origin/     → Origin interface + 6 origin type implementations
+- internal/tunnel/     → Cloudflare Tunnel API manager + cloudflared process
+- internal/access/     → Cloudflare Access app/policy API manager
+- internal/dns/        → Cloudflare DNS record API manager
+- internal/pipeline/   → Serve orchestration (10-step pipeline + teardown)
+- internal/session/    → Session state machine + file-based store
+- internal/config/     → Viper config wrapper
+- internal/exec/       → Subprocess execution helpers
+- internal/ui/         → Terminal formatting (lipgloss)
+
+### Key Dependencies
+- github.com/cloudflare/cloudflare-go (v0.116.0) — Cloudflare API client
+- github.com/spf13/cobra — CLI framework
+- github.com/spf13/viper — Config management
+- github.com/charmbracelet/lipgloss — Terminal styling
+- github.com/google/uuid — Session IDs
+
+### State
+- Config: ~/.config/flare-cli/config.yaml
+- Sessions: ~/.config/flare-cli/sessions/<uuid>.json
+
+### Commands
+- flare init         — Bootstrap config for Cloudflare account/zone
+- flare serve        — Main command: start origin + tunnel + Access
+- flare close        — Teardown session resources
+- flare update       — Mutate active session (policy, TTL)
+- flare status       — Show session details
+- flare list         — List all sessions
+- flare logs         — Stream session logs
+- flare doctor       — Validate prerequisites
+- flare auth         — Auth utilities (print-login-url, rotate-mtls)
+- flare config       — Read/write persistent config
+- flare version      — Print version info
+
+### Origin Types
+- local:http           — Proxy to existing local HTTP service
+- local:command        — Launch command, wait for ready, expose
+- builtin:static      — Serve static files
+- builtin:file-browser — Built-in file browser UI
+- docker:container    — Run Docker container, expose port
+- docker:compose-service — Start Compose service, expose port
+
+## Environment Variables Required
+- CLOUDFLARE_API_TOKEN — Cloudflare API token with Tunnel Edit, DNS Edit, Access Apps Edit
+
+## Notes
+- Uses cloudflare-go v0.116.0 (traditional SDK, not v6 generated client)
+- Shells out to cloudflared and docker (not embedded SDKs)
+- Remotely-managed tunnels by default (not Quick Tunnels)
+- All origins bind to 127.0.0.1 only
+- Session state machine: initializing -> provisioning -> active -> stopping -> stopped

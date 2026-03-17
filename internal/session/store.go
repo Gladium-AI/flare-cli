@@ -15,6 +15,7 @@ type Store interface {
 	Load(ctx context.Context, id string) (*Session, error)
 	List(ctx context.Context, stateFilter ...State) ([]*Session, error)
 	Delete(ctx context.Context, id string) error
+	Resolve(ctx context.Context, idOrPrefix string) (*Session, error)
 }
 
 // FileStore implements Store using JSON files on disk.

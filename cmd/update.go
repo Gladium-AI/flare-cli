@@ -5,11 +5,9 @@ import (
 	"strings"
 	"time"
 
-	cf "github.com/cloudflare/cloudflare-go"
 	"github.com/spf13/cobra"
 
 	accesspkg "github.com/paoloanzn/flare-cli/internal/access"
-	"github.com/paoloanzn/flare-cli/internal/config"
 	"github.com/paoloanzn/flare-cli/internal/session"
 	"github.com/paoloanzn/flare-cli/internal/ui"
 )
@@ -36,7 +34,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	sessionID := args[0]
 
-	store, err := loadSessionStore()
+	store, err := getStore()
 	if err != nil {
 		return err
 	}
@@ -67,7 +65,6 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Update Access policy.
 	policyUpdated := false
 
-	// Process email changes.
 	if emails, _ := cmd.Flags().GetStringSlice("allow-email"); len(emails) > 0 {
 		for _, e := range emails {
 			if strings.HasPrefix(e, "add:") {
@@ -83,7 +80,6 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		policyUpdated = true
 	}
 
-	// Process domain changes.
 	if domains, _ := cmd.Flags().GetStringSlice("allow-domain"); len(domains) > 0 {
 		for _, d := range domains {
 			if strings.HasPrefix(d, "add:") {
@@ -105,16 +101,18 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	if policyUpdated && sess.AccessAppID != "" && sess.AccessPolicyID != "" {
-		token := config.APIToken()
-		if token == "" {
-			return fmt.Errorf("CLOUDFLARE_API_TOKEN not set")
-		}
-		cfClient, err := cf.NewWithAPIToken(token)
-		if err != nil {
-			return fmt.Errorf("creating Cloudflare client: %w", err)
+		// Get access manager from injected services or create real one.
+		var accessMgr accesspkg.Manager
+		if svc := getServices(); svc != nil && svc.AccessMgr != nil {
+			accessMgr = svc.AccessMgr
+		} else {
+			svc, buildErr := buildProductionServices()
+			if buildErr != nil {
+				return buildErr
+			}
+			accessMgr = svc.AccessMgr
 		}
 
-		accessMgr := accesspkg.NewAPIManager(cfClient, "")
 		err = accessMgr.UpdatePolicy(ctx, sess.AccountID, sess.AccessAppID, sess.AccessPolicyID, accesspkg.Policy{
 			AllowedEmails:   sess.AllowedEmails,
 			AllowedDomains:  sess.AllowedDomains,

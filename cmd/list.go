@@ -16,7 +16,7 @@ var listCmd = &cobra.Command{
 	Short: "List all sessions",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
-		store, err := loadSessionStore()
+		store, err := getStore()
 		if err != nil {
 			return err
 		}

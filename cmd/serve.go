@@ -149,32 +149,18 @@ func runServe(cmd *cobra.Command, args []string) error {
 	ephemeralDNS, _ := cmd.Flags().GetBool("ephemeral-dns")
 	name, _ := cmd.Flags().GetString("name")
 
-	// Create Cloudflare API client.
-	token := config.APIToken()
-	cfClient, err := cf.NewWithAPIToken(token)
-	if err != nil {
-		return fmt.Errorf("creating Cloudflare client: %w", err)
-	}
-
-	// Create managers.
-	tunnelMgr := tunnelpkg.NewAPIManager(cfClient)
-	connector := tunnelpkg.NewProcessConnector(viper.GetString(config.KeyCloudflaredBin))
-	teamDomain := viper.GetString(config.KeyTeamDomain)
-	accessMgr := accesspkg.NewAPIManager(cfClient, teamDomain)
-	dnsMgr := dnspkg.NewAPIManager(cfClient)
-
-	// Create session store.
-	sessDir, err := config.SessionsDir()
-	if err != nil {
-		return err
-	}
-	store, err := session.NewFileStore(sessDir)
-	if err != nil {
-		return err
+	// Get services (injected for tests, or create real ones).
+	svc := getServices()
+	if svc == nil {
+		var buildErr error
+		svc, buildErr = buildProductionServices()
+		if buildErr != nil {
+			return buildErr
+		}
 	}
 
 	// Build and run pipeline.
-	pipe := pipeline.New(tunnelMgr, connector, accessMgr, dnsMgr, store)
+	pipe := pipeline.New(svc.TunnelMgr, svc.Connector, svc.AccessMgr, svc.DNSMgr, svc.Store)
 
 	return pipe.Serve(ctx, pipeline.ServeParams{
 		OriginConfig:       originCfg,
@@ -249,6 +235,37 @@ func buildOriginConfig(cmd *cobra.Command, t origin.Type) (origin.Config, error)
 	}
 
 	return cfg, nil
+}
+
+func buildProductionServices() (*Services, error) {
+	token := config.APIToken()
+	cfClient, err := cf.NewWithAPIToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("creating Cloudflare client: %w", err)
+	}
+
+	tunnelMgr := tunnelpkg.NewAPIManager(cfClient)
+	connector := tunnelpkg.NewProcessConnector(viper.GetString(config.KeyCloudflaredBin))
+	teamDomain := viper.GetString(config.KeyTeamDomain)
+	accessMgr := accesspkg.NewAPIManager(cfClient, teamDomain)
+	dnsMgr := dnspkg.NewAPIManager(cfClient)
+
+	sessDir, err := config.SessionsDir()
+	if err != nil {
+		return nil, err
+	}
+	store, err := session.NewFileStore(sessDir)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Services{
+		TunnelMgr: tunnelMgr,
+		Connector: connector,
+		AccessMgr: accessMgr,
+		DNSMgr:    dnsMgr,
+		Store:     store,
+	}, nil
 }
 
 func buildAccessPolicy(cmd *cobra.Command) (accesspkg.Policy, error) {

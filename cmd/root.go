@@ -62,3 +62,8 @@ func ContextCancel(cmd *cobra.Command) context.CancelFunc {
 	}
 	return func() {}
 }
+
+// RootCmdForTest returns the root command for use in tests.
+func RootCmdForTest() *cobra.Command {
+	return rootCmd
+}

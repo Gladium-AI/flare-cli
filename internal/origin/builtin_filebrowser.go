@@ -153,7 +153,9 @@ func (fb *BuiltinFileBrowser) handleAPI(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(files)
+	if err := json.NewEncoder(w).Encode(files); err != nil {
+		http.Error(w, "encoding response: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (fb *BuiltinFileBrowser) handleDownload(w http.ResponseWriter, r *http.Request) {
@@ -206,7 +208,10 @@ func (fb *BuiltinFileBrowser) handleUpload(w http.ResponseWriter, r *http.Reques
 	}
 	defer out.Close()
 
-	io.Copy(out, file)
+	if _, err := io.Copy(out, file); err != nil {
+		http.Error(w, "writing file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 }
 

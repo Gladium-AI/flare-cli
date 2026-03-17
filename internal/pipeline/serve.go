@@ -338,6 +338,5 @@ type TeardownOpts struct {
 	DeleteAccessApp bool
 	DeleteDNS       bool
 	DeleteTunnel    bool
-	StopOrigin      bool
 	Force           bool
 }

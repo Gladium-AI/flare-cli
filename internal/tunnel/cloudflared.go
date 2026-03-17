@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
+	"sync"
 
 	flareexec "github.com/paoloanzn/flare-cli/internal/exec"
 )
@@ -18,6 +20,7 @@ type Connector interface {
 
 // ProcessConnector runs cloudflared as a subprocess.
 type ProcessConnector struct {
+	mu     sync.Mutex
 	bin    string // Path to cloudflared binary.
 	runner *flareexec.Runner
 }
@@ -32,6 +35,9 @@ func NewProcessConnector(cloudflaredBin string) *ProcessConnector {
 
 // Run starts `cloudflared tunnel run --token <token>`.
 func (c *ProcessConnector) Run(ctx context.Context, token string) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	runner, err := flareexec.Start(ctx, flareexec.RunOpts{
 		Name: c.bin,
 		Args: []string{"tunnel", "run", "--token", token},
@@ -46,6 +52,9 @@ func (c *ProcessConnector) Run(ctx context.Context, token string) (int, error) {
 
 // Stop gracefully stops the cloudflared process.
 func (c *ProcessConnector) Stop(_ context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.runner == nil {
 		return nil
 	}
@@ -54,14 +63,20 @@ func (c *ProcessConnector) Stop(_ context.Context) error {
 
 // Logs returns a reader for cloudflared's output.
 func (c *ProcessConnector) Logs() io.ReadCloser {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.runner == nil {
-		return nil
+		return io.NopCloser(strings.NewReader(""))
 	}
 	return c.runner.Logs()
 }
 
 // Healthy returns nil if cloudflared is still running.
 func (c *ProcessConnector) Healthy() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.runner == nil {
 		return fmt.Errorf("cloudflared not started")
 	}

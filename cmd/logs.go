@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
+	"github.com/paoloanzn/flare-cli/internal/config"
 	"github.com/paoloanzn/flare-cli/internal/session"
 	"github.com/paoloanzn/flare-cli/internal/ui"
 )
@@ -47,9 +49,11 @@ var logsCmd = &cobra.Command{
 		}
 
 		// Attempt to read from the session log file if it exists.
-		logPath := sessionLogPath(sess.ID)
-		if _, statErr := os.Stat(logPath); statErr == nil {
-			return streamLogFile(ctx, logPath, source)
+		logPath, logPathErr := sessionLogPath(sess.ID)
+		if logPathErr == nil {
+			if _, statErr := os.Stat(logPath); statErr == nil {
+				return streamLogFile(ctx, logPath, source)
+			}
 		}
 
 		ui.PrintInfo("No stored logs available. Live logs are only visible in the terminal running 'flare serve'.")
@@ -66,9 +70,12 @@ func init() {
 	rootCmd.AddCommand(logsCmd)
 }
 
-func sessionLogPath(sessionID string) string {
-	dir, _ := os.UserHomeDir()
-	return fmt.Sprintf("%s/.config/flare-cli/logs/%s.log", dir, sessionID)
+func sessionLogPath(sessionID string) (string, error) {
+	dir, err := config.Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "logs", sessionID+".log"), nil
 }
 
 func streamLogFile(_ interface{}, path string, _ string) error {

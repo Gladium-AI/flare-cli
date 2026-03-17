@@ -99,6 +99,7 @@ func (r *Runner) Stop() error {
 	case <-time.After(10 * time.Second):
 		// Force kill.
 		_ = syscall.Kill(pgid, syscall.SIGKILL)
+		<-done // Wait for the process to be reaped.
 		return fmt.Errorf("process did not exit after SIGTERM; sent SIGKILL")
 	}
 }

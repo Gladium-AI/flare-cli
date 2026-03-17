@@ -51,6 +51,10 @@ var listCmd = &cobra.Command{
 		}
 
 		if jsonOut {
+			// Ensure empty list renders as [] not null.
+			if sessions == nil {
+				sessions = []*session.Session{}
+			}
 			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			return enc.Encode(sessions)

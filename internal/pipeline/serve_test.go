@@ -34,6 +34,7 @@ func TestServeHappyPath(t *testing.T) {
 	dnsMgr := &testutil.MockDNSManager{}
 
 	pipe := New(tunnelMgr, connector, accessMgr, dnsMgr, store)
+	pipe.AccessPropagationDelay = 0 // Skip in tests.
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
@@ -90,6 +91,7 @@ func TestServeTunnelCreateFails(t *testing.T) {
 	dnsMgr := &testutil.MockDNSManager{}
 
 	pipe := New(tunnelMgr, connector, accessMgr, dnsMgr, store)
+	pipe.AccessPropagationDelay = 0
 
 	err := pipe.Serve(context.Background(), ServeParams{
 		OriginConfig: originConfigForTest(t),
@@ -131,6 +133,7 @@ func TestServeAccessCreateFails(t *testing.T) {
 	dnsMgr := &testutil.MockDNSManager{}
 
 	pipe := New(tunnelMgr, connector, accessMgr, dnsMgr, store)
+	pipe.AccessPropagationDelay = 0
 
 	err := pipe.Serve(context.Background(), ServeParams{
 		OriginConfig: originConfigForTest(t),
@@ -159,6 +162,7 @@ func TestServeNoDNS(t *testing.T) {
 	dnsMgr := &testutil.MockDNSManager{}
 
 	pipe := New(tunnelMgr, connector, accessMgr, dnsMgr, store)
+	pipe.AccessPropagationDelay = 0
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
@@ -189,6 +193,7 @@ func TestTeardownSession(t *testing.T) {
 	dnsMgr := &testutil.MockDNSManager{}
 
 	pipe := New(tunnelMgr, connector, accessMgr, dnsMgr, store)
+	pipe.AccessPropagationDelay = 0
 
 	sess := testutil.MakeTestSession("sess-001", "test.example.com")
 	store.Save(context.Background(), sess)

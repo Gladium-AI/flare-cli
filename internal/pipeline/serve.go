@@ -52,6 +52,10 @@ type Pipeline struct {
 	accessMgr  access.Manager
 	dnsMgr     dns.Manager
 	store      session.Store
+
+	// AccessPropagationDelay is the time to wait after creating an Access app
+	// for it to propagate to Cloudflare's edge. Default: 5s. Set to 0 in tests.
+	AccessPropagationDelay time.Duration
 }
 
 // New creates a new Pipeline with all required dependencies.
@@ -63,11 +67,12 @@ func New(
 	store session.Store,
 ) *Pipeline {
 	return &Pipeline{
-		tunnelMgr:  tunnelMgr,
-		connector:  connector,
-		accessMgr:  accessMgr,
-		dnsMgr:     dnsMgr,
-		store:      store,
+		tunnelMgr:              tunnelMgr,
+		connector:              connector,
+		accessMgr:              accessMgr,
+		dnsMgr:                 dnsMgr,
+		store:                  store,
+		AccessPropagationDelay: 5 * time.Second,
 	}
 }
 
@@ -199,6 +204,18 @@ func (p *Pipeline) Serve(ctx context.Context, params ServeParams) error {
 		}
 	})
 	ui.PrintSuccess("Access application created (auth: %s)", params.Policy.AuthMode)
+
+	// Brief pause for Access app to propagate to Cloudflare's edge.
+	// Without this, early requests hit a 404/530 "Unable to find Access application" page.
+	if p.AccessPropagationDelay > 0 {
+		ui.PrintInfo("Waiting for Access policy to propagate...")
+		select {
+		case <-time.After(p.AccessPropagationDelay):
+		case <-ctx.Done():
+			rollback()
+			return ctx.Err()
+		}
+	}
 
 	// Step 7: Start cloudflared connector.
 	ui.PrintInfo("Starting cloudflared connector...")

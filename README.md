@@ -60,7 +60,7 @@ flare serve docker:container --image nginx:alpine --container-port 80 --subdomai
 ### From source
 
 ```bash
-git clone https://github.com/paoloanzn/flare-cli.git
+git clone https://github.com/Gladium-AI/flare-cli.git
 cd flare-cli
 make build
 sudo mv flare /usr/local/bin/

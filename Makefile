@@ -11,8 +11,11 @@ LDFLAGS  = -s -w \
 build:
 	go build -ldflags '$(LDFLAGS)' -o flare .
 
-install:
-	go install -ldflags '$(LDFLAGS)' .
+install: build
+	mkdir -p $(HOME)/.local/bin
+	cp flare $(HOME)/.local/bin/flare
+	@echo "Installed flare to $(HOME)/.local/bin/flare"
+	@echo "Make sure $(HOME)/.local/bin is in your PATH"
 
 test:
 	go test ./... -v

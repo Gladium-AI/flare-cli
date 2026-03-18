@@ -98,8 +98,14 @@ func (m *APIManager) GetToken(ctx context.Context, accountID, tunnelID string) (
 }
 
 // Delete removes a Cloudflare Tunnel.
+// It first cleans up any lingering connections so the delete doesn't fail
+// with "active connections" errors after cloudflared has been stopped.
 func (m *APIManager) Delete(ctx context.Context, accountID, tunnelID string) error {
 	rc := cf.AccountIdentifier(accountID)
+
+	// Clean up stale connections before deletion.
+	_ = m.client.CleanupTunnelConnections(ctx, rc, tunnelID)
+
 	if err := m.client.DeleteTunnel(ctx, rc, tunnelID); err != nil {
 		return fmt.Errorf("deleting tunnel: %w", err)
 	}

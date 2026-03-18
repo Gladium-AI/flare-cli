@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -311,12 +312,30 @@ func (p *Pipeline) TeardownSession(ctx context.Context, sess *session.Session, o
 		}
 	}
 
-	// Delete tunnel.
+	// Delete tunnel (retry — Cloudflare needs time to drain connections after cloudflared stops).
 	if opts.DeleteTunnel && sess.TunnelID != "" {
 		ui.PrintInfo("Deleting tunnel...")
-		if err := p.tunnelMgr.Delete(ctx, sess.AccountID, sess.TunnelID); err != nil {
-			errs = append(errs, fmt.Errorf("deleting tunnel: %w", err))
-		} else {
+		var tunnelDeleted bool
+		for attempt := 0; attempt < 6; attempt++ {
+			if err := p.tunnelMgr.Delete(ctx, sess.AccountID, sess.TunnelID); err != nil {
+				if strings.Contains(err.Error(), "active connections") && attempt < 5 {
+					wait := time.Duration(2*(attempt+1)) * time.Second
+					ui.PrintInfo("Tunnel has active connections, waiting %s...", wait)
+					select {
+					case <-time.After(wait):
+						continue
+					case <-ctx.Done():
+						errs = append(errs, fmt.Errorf("deleting tunnel: context cancelled while waiting for connections to drain"))
+						break
+					}
+				}
+				errs = append(errs, fmt.Errorf("deleting tunnel: %w", err))
+			} else {
+				tunnelDeleted = true
+			}
+			break
+		}
+		if tunnelDeleted {
 			ui.PrintSuccess("Tunnel deleted")
 		}
 	}

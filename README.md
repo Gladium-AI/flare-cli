@@ -57,13 +57,20 @@ flare serve docker:container --image nginx:alpine --container-port 80 --subdomai
 
 ## Install
 
-### From source
+**One-liner (Linux / macOS):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Gladium-AI/flare-cli/main/install.sh | sh
+```
+
+Downloads the latest release for your OS/arch and installs to `~/.local/bin`.
+
+**Build from source:**
 
 ```bash
 git clone https://github.com/Gladium-AI/flare-cli.git
 cd flare-cli
-make build
-sudo mv flare /usr/local/bin/
+make install   # installs to ~/.local/bin
 ```
 
 ### Prerequisites

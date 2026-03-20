@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          MODULE="github.com/paoloanzn/flare-cli"
+
+          LDFLAGS="-s -w"
+          LDFLAGS="${LDFLAGS} -X ${MODULE}/cmd.Version=${VERSION}"
+          LDFLAGS="${LDFLAGS} -X ${MODULE}/cmd.Commit=${COMMIT}"
+          LDFLAGS="${LDFLAGS} -X ${MODULE}/cmd.Date=${DATE}"
+
+          mkdir -p dist
+          go build -ldflags "${LDFLAGS}" -o dist/flare .
+
+      - name: Package archive
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          ARCHIVE="flare-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
+          tar -czf "dist/${ARCHIVE}" -C dist flare
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "dist/${ARCHIVE}" \
+            --clobber

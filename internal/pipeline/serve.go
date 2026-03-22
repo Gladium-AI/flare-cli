@@ -3,6 +3,8 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -232,6 +234,9 @@ func (p *Pipeline) Serve(ctx context.Context, params ServeParams) error {
 		p.connector.Stop(cleanupCtx)
 	})
 	ui.PrintSuccess("cloudflared running (PID %d)", pid)
+	if logPath := p.connector.LogFilePath(); logPath != "" {
+		ui.PrintInfo("cloudflared logs: %s", logPath)
+	}
 
 	// Step 8: Print success summary.
 	fmt.Println()
@@ -267,6 +272,26 @@ func (p *Pipeline) waitForShutdown(ctx context.Context, sess *session.Session, p
 		ui.PrintInfo("TTL expired, shutting down...")
 	case <-exitCh:
 		ui.PrintWarning("cloudflared process exited unexpectedly!")
+		// Dump last 50 lines of cloudflared logs for diagnostics.
+		if logs := p.connector.Logs(); logs != nil {
+			data, _ := io.ReadAll(logs)
+			logs.Close()
+			if len(data) > 0 {
+				ui.PrintWarning("Last cloudflared output:")
+				// Print last ~50 lines.
+				lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+				start := 0
+				if len(lines) > 50 {
+					start = len(lines) - 50
+				}
+				for _, line := range lines[start:] {
+					fmt.Fprintf(os.Stderr, "  %s\n", line)
+				}
+			}
+		}
+		if logPath := p.connector.LogFilePath(); logPath != "" {
+			ui.PrintInfo("Full cloudflared logs at: %s", logPath)
+		}
 		ui.PrintInfo("Shutting down session...")
 	}
 

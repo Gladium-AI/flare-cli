@@ -135,6 +135,10 @@ func (m *MockConnector) ExitCh() <-chan struct{} {
 	return make(chan struct{})
 }
 
+func (m *MockConnector) LogFilePath() string {
+	return ""
+}
+
 // --- MockAccessManager ---
 
 type MockAccessManager struct {

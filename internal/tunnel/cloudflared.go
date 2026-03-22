@@ -16,6 +16,9 @@ type Connector interface {
 	Stop(ctx context.Context) error
 	Logs() io.ReadCloser
 	Healthy() error
+	// ExitCh returns a channel that is closed when the cloudflared process exits.
+	// Returns nil if the process is not running.
+	ExitCh() <-chan struct{}
 }
 
 // ProcessConnector runs cloudflared as a subprocess.
@@ -84,4 +87,18 @@ func (c *ProcessConnector) Healthy() error {
 		return fmt.Errorf("cloudflared process exited")
 	}
 	return nil
+}
+
+// ExitCh returns a channel that is closed when the cloudflared process exits.
+func (c *ProcessConnector) ExitCh() <-chan struct{} {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.runner == nil {
+		// Return a closed channel so callers don't block forever.
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+	return c.runner.ExitCh()
 }

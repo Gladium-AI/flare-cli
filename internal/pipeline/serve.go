@@ -257,11 +257,17 @@ func (p *Pipeline) waitForShutdown(ctx context.Context, sess *session.Session, p
 		ttlTimer = time.After(params.TTL)
 	}
 
+	// Get cloudflared's exit channel so we detect crashes immediately.
+	exitCh := p.connector.ExitCh()
+
 	select {
 	case <-ctx.Done():
 		ui.PrintInfo("Shutdown signal received...")
 	case <-ttlTimer:
 		ui.PrintInfo("TTL expired, shutting down...")
+	case <-exitCh:
+		ui.PrintWarning("cloudflared process exited unexpectedly!")
+		ui.PrintInfo("Shutting down session...")
 	}
 
 	return p.Teardown(sess, cleanups)

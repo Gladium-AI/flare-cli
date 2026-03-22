@@ -85,6 +85,7 @@ type MockConnector struct {
 	FnStop    func(ctx context.Context) error
 	FnLogs    func() io.ReadCloser
 	FnHealthy func() error
+	FnExitCh  func() <-chan struct{}
 
 	RunCalls   []string
 	StopCalled bool
@@ -124,6 +125,14 @@ func (m *MockConnector) Healthy() error {
 		return m.FnHealthy()
 	}
 	return nil
+}
+
+func (m *MockConnector) ExitCh() <-chan struct{} {
+	if m.FnExitCh != nil {
+		return m.FnExitCh()
+	}
+	// Default: return a channel that never closes (process stays alive).
+	return make(chan struct{})
 }
 
 // --- MockAccessManager ---

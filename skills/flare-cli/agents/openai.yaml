@@ -1,0 +1,4 @@
+interface:
+  display_name: "flare-cli"
+  short_description: "Expose local apps through Cloudflare Tunnel and Access with flare"
+  default_prompt: "Use flare to authenticate, expose a local app or container through Cloudflare, inspect the session, and clean up any temporary resources with concrete commands and outputs."

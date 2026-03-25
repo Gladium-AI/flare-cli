@@ -65,6 +65,14 @@ curl -fsSL https://raw.githubusercontent.com/Gladium-AI/flare-cli/main/install.s
 
 Downloads the latest release for your OS/arch and installs to `~/.local/bin`.
 
+**Install the Claude + Codex skill:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Gladium-AI/flare-cli/main/install-skill.sh | sh
+```
+
+By default this installs `flare-cli` into `~/.claude/skills` and `${CODEX_HOME:-~/.codex}/skills`. Set `SKILLS_DIR=/path/to/skills` to install to a single custom skill directory instead.
+
 **Build from source:**
 
 ```bash

@@ -1,6 +1,6 @@
 # Binary
-flare
-flare-cli
+/flare
+/flare-cli
 dist/
 
 # Go
